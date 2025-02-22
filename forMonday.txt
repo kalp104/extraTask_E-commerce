@@ -1,0 +1,409 @@
+
+//------------------------------------------------aside bar------------------------------------------------------------//
+
+
+<ul id="sidebarMenu">
+    <li><a asp-controller="DashBoardHelpers" asp-action="RoleWiseBack"><i class="bi bi-grid mx-2"></i>Dashboard</a></li>
+    <li><a asp-controller="UserTable" asp-action="Index"><i class="bi bi-people mx-2"></i>Users</a></li>
+    <li><a href="./permissions.html"><i class="bi bi-person-check mx-2"></i>Role & Permition</a></li>
+    <li><a href="./menu.html"><i class="bi bi-cake mx-2"></i>Menu</a></li>
+    <li><a href=""><i class="bi bi-database mx-2"></i>Table & Section</a></li>
+    <li><a href=""><i class="bi bi-cash-coin mx-2"></i>Taxes & Fees</a></li>
+    <li><a href=""><i class="bi bi-list-ol mx-2"></i>Orders</a></li>
+    <li><a href=""><i class="bi bi-person-square mx-2"></i>Customers</a></li>
+</ul>
+
+/* Default style */
+#sidebarMenu li {
+    list-style: none;
+    padding: 10px;
+    transition: background 0.3s;
+}
+
+#sidebarMenu li a {
+    text-decoration: none;
+    color: black;
+    display: block;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+/* Highlight active menu */
+#sidebarMenu li.active a {
+    background-color: #007bff;
+    color: white;
+}
+
+
+document.addEventListener("DOMContentLoaded", function () {
+    let menuItems = document.querySelectorAll("#sidebarMenu li");
+
+    menuItems.forEach(item => {
+        item.addEventListener("click", function () {
+            // Remove 'active' class from all items
+            menuItems.forEach(i => i.classList.remove("active"));
+
+            // Add 'active' class to the clicked item
+            this.classList.add("active");
+
+            // Store selection in local storage to persist after reload
+            localStorage.setItem("activeMenu", this.innerText.trim());
+        });
+    });
+
+    // On page load, set the active menu item from local storage
+    let activeMenu = localStorage.getItem("activeMenu");
+    if (activeMenu) {
+        menuItems.forEach(item => {
+            if (item.innerText.trim() === activeMenu) {
+                item.classList.add("active");
+            }
+        });
+    }
+});
+
+//----------------------------------------------------------------------------------------------------------------------------//
+
+//------------------------------------------------universal navbar------------------------------------------------------------//
+
+
+//DashBoardController.cs
+
+public class DashboardController : Controller
+{
+    private readonly ApplicationDbContext _db; // Inject database context
+
+    public DashboardController(ApplicationDbContext db)
+    {
+        _db = db;
+    }
+
+    public IActionResult Index()
+    {
+        // Get the logged-in user's email from HttpContext
+        var email = HttpContext.Items["UserEmail"] as string;
+
+        if (!string.IsNullOrEmpty(email))
+        {
+            var user = _db.Accounts.FirstOrDefault(u => u.Email == email);
+            if (user != null)
+            {
+                ViewBag.Username = user.Username;
+            }
+        }
+
+        return View();
+    }
+}
+
+
+
+// _DashBoard.cshtml
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <link rel="icon" type="image/x-icon" href="/images/images/transperent-pizza.png">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet" />
+    
+    <title>Pizza Shop - Dashboard</title>
+</head>
+
+<body class="bg-light w-100">
+    <div class="main w-100">
+
+        <!-- Navbar -->
+        <nav class="navbar d-flex navbar-expand-lg bg-body-tertiary">
+            <div class="w-100 d-flex">
+                <button class="asideBar navbar-brand border rounded-circle" type="button" data-bs-toggle="offcanvas"
+                    data-bs-target="#offcanvasWithBothOptions" aria-controls="offcanvasWithBothOptions">
+                    <img src="~/images/logos/pizzashop_logo.png" alt="" height="25px">
+                </button>
+
+                <div class="offcanvas offcanvas-start" data-bs-scroll="true" tabindex="-1" id="offcanvasWithBothOptions"
+                    aria-labelledby="offcanvasWithBothOptionsLabel">
+                    <div class="offcanvas-header">
+                        <h1 class="h1class"> 
+                            <img src="~/images/logos/pizzashop_logo.png" alt="" height="40px"> PIZZASHOP
+                        </h1>
+                        <button type="button" class="btn-close mb-1" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                    </div>
+                    <div class="offcanvas-body">
+                        <aside class="sideBar">
+                            <ul>
+                                <li><a asp-controller="DashBoardHelpers" asp-action="RoleWiseBack"><i class="bi bi-grid mx-2"></i>Dashboard</a></li>
+                                <li><a asp-controller="UserTable" asp-action="Index"><i class="bi bi-people mx-2"></i>Users</a></li>
+                                <li><a href="./permissions.html"><i class="bi bi-person-check mx-2"></i>Role & Permition</a></li>
+                                <li><a href="./menu.html"><i class="bi bi-cake mx-2"></i>Menu</a></li>
+                                <li><a href=""><i class="bi bi-database mx-2"></i>Table & Section</a></li>
+                                <li><a href=""><i class="bi bi-cash-coin mx-2"></i>Taxes & Fees</a></li>
+                                <li><a href=""><i class="bi bi-list-ol mx-2"></i>Orders</a></li>
+                                <li><a href=""><i class="bi bi-person-square mx-2"></i>Customers</a></li>
+                            </ul>
+                        </aside>
+                    </div>
+                </div>
+
+                <div class="container-fluid d-flex justify-content-end">
+                    <div class="dropdown">
+                        <button class="text-decoration-none bg-transparent rounded-circle border-light" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <img src="~/images/Default_pfp.svg.png" height="35px" alt="">
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li class="dropdown-item d-flex justify-content-center align-items-center gap-3 mb-3">
+                                <img class="" src="~/images/user-solid.svg" height="30px" alt=""> @ViewBag.Username
+                            </li>
+                            <li><a asp-controller="DashBoardHelpers" asp-action="UserProfile" class="dropdown-item border-bottom">My Profile</a></li>
+                            <li><a class="dropdown-item border-bottom" asp-action="ChangePassword" asp-controller="DashBoardHelpers">Change Password</a></li>
+                            <li><a class="dropdown-item border-bottom" asp-action="Logout" asp-controller="Home">Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </nav>
+        <!-- End Navbar -->
+
+        <!-- Sidebar -->
+        <aside class="mainClassOfsidebar sideBar">
+            <div class="logoheader">
+                <h1 class="h1class"> 
+                    <img src="~/images/logos/pizzashop_logo.png" alt="" height="40px"> PIZZASHOP
+                </h1>
+            </div>
+            <ul>
+                <li><a asp-controller="DashBoardHelpers" asp-action="RoleWiseBack"><i class="bi bi-grid mx-2"></i>Dashboard</a></li>
+                <li><a asp-controller="UserTable" asp-action="Index"><i class="bi bi-people mx-2"></i>Users</a></li>
+                <li><a href="./permissions.html"><i class="bi bi-person-check mx-2"></i>Role & Permition</a></li>
+                <li><a href="./menu.html"><i class="bi bi-cake mx-2"></i>Menu</a></li>
+                <li><a href=""><i class="bi bi-database mx-2"></i>Table & Section</a></li>
+                <li><a href=""><i class="bi bi-cash-coin mx-2"></i>Taxes & Fees</a></li>
+                <li><a href=""><i class="bi bi-list-ol mx-2"></i>Orders</a></li>
+                <li><a href=""><i class="bi bi-person-square mx-2"></i>Customers</a></li>
+            </ul>
+        </aside>
+        <!-- End Sidebar -->
+
+        <!-- Main Content -->
+        <main class="w-100">
+            @RenderBody()
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/browse.js" asp-append-version="true"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+        crossorigin="anonymous"></script>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/dist/jquery.validate.unobtrusive.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+
+
+
+//----------------------------------------------------------------------------------------------------------------------------//
+
+//------------------------------------------------separate middleware------------------------------------------------------------//
+
+//Middleware/AuthMiddleware.cs
+
+
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using System.Threading.Tasks;
+
+public class AuthMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly IConfiguration _configuration;
+
+    public AuthMiddleware(RequestDelegate next, IConfiguration configuration)
+    {
+        _next = next;
+        _configuration = configuration;
+    }
+
+    public async Task Invoke(HttpContext context)
+    {
+        if (!context.Request.Path.StartsWithSegments("/api") &&
+            !context.Request.Path.StartsWithSegments("/css") &&
+            !context.Request.Path.StartsWithSegments("/js") &&
+            !context.Request.Path.StartsWithSegments("/lib") &&
+            !context.Request.Path.Value.Contains("."))
+        {
+            if (!context.User.Identity.IsAuthenticated && context.Request.Cookies.ContainsKey("auth_token"))
+            {
+                var token = context.Request.Cookies["auth_token"];
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]);
+
+                try
+                {
+                    var principal = tokenHandler.ValidateToken(token, new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(key),
+                        ValidateIssuer = true,
+                        ValidIssuer = _configuration["Jwt:Issuer"],
+                        ValidateAudience = true,
+                        ValidAudience = _configuration["Jwt:Audience"],
+                        ValidateLifetime = true,
+                        ClockSkew = TimeSpan.Zero
+                    }, out _);
+
+                    context.User = principal;
+
+                    // Extract Email and Role Claims
+                    var emailClaim = principal.FindFirst(ClaimTypes.Email)?.Value;
+                    var roleClaim = principal.FindFirst(ClaimTypes.Role)?.Value;
+
+                    if (!string.IsNullOrEmpty(emailClaim) && !string.IsNullOrEmpty(roleClaim))
+                    {
+                        context.Items["UserEmail"] = emailClaim;
+                        context.Items["UserRole"] = roleClaim;
+
+                        Console.WriteLine($"User authenticated - Email: {emailClaim}, Role: {roleClaim}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Email or Role claim not found in token.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Token validation failed: {ex.Message}");
+                    context.Response.Redirect("/Account/AutoLogin");
+                    return;
+                }
+            }
+        }
+
+        await _next(context);
+    }
+}
+
+
+
+
+
+app.UseMiddleware<AuthMiddleware>();
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
+
+
+
+
+
+//----------------------------------------------------------------------------------------------------------------------------//
+
+//------------------------------------------------getjson to ajax------------------------------------------------------------//
+
+// controller
+
+[HttpGet]
+public IActionResult GetStates(int countryId)
+{
+    var states = _db.States
+        .Where(x => x.Countryid == countryId)
+        .Select(s => new { s.Stateid, s.Statename }) // Ensure only needed fields are sent
+        .ToList();
+
+    return Json(states);
+}
+
+[HttpGet]
+public IActionResult GetCities(int stateId)
+{
+    var cities = _db.Cities
+        .Where(x => x.Stateid == stateId)
+        .Select(c => new { c.Cityid, c.Cityname }) // Ensure only needed fields are sent
+        .ToList();
+
+    return Json(cities);
+}
+
+// jQuery
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $('#countrydropdown').change(function () {
+            var countryId = $(this).val();
+            $('#statedropdown').empty().append('<option value="">Select State</option>');
+            $('#citydropdown').empty().append('<option value="">Select City</option>');
+
+            if (countryId) {
+                $.ajax({
+                    url: '/DashBoardHelpers/GetStates',
+                    type: 'GET',
+                    data: { countryId: countryId },
+                    dataType: 'json',
+                    success: function (response) {
+                        $.each(response, function (i, state) { // No need for `$values`
+                            console.log("State Name: ", state.statename);
+                            $('#statedropdown').append('<option value="' + state.stateid + '">' + state.statename + '</option>');
+                        });
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("Error fetching states:", error);
+                    }
+                });
+            }
+        });
+
+        $('#statedropdown').change(function () {
+            var stateId = $(this).val();
+            $('#citydropdown').empty().append('<option value="">Select City</option>');
+
+            if (stateId) {
+                $.ajax({
+                    url: '/DashBoardHelpers/GetCities',
+                    type: 'GET',
+                    data: { stateId: stateId },
+                    dataType: 'json',
+                    success: function (response) {
+                        $.each(response, function (i, city) { // No need for `$values`
+                            $('#citydropdown').append('<option value="' + city.cityid + '">' + city.cityname + '</option>');
+                        });
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("Error fetching cities:", error);
+                    }
+                });
+            }
+        });
+
+        var errorMessage = "@TempData["ERROR"]";
+        if (errorMessage) {
+            toastr.error(errorMessage, 'Error', { timeOut: 5000 });
+        }
+        var successMessage = '@TempData["SUCCESS"]';
+        if (successMessage) {
+            toastr.success(successMessage, 'Success', { timeOut: 5000 });
+        }
+    });
+</script>
+
+

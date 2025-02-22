@@ -1,0 +1,60 @@
+private readonly IWebHostEnvironment _WebHostEnvironment;
+
+
+[HttpPost]
+public IActionResult AddUser(Image images, IFormFile imageFile)
+{
+if (images.Userid != null && imageFile != null)
+{
+string uploadFolder = Path.Combine(_WebHostEnvironment.WebRootPath, "uploads");
+
+// Ensure uploads folder exists
+if (!Directory.Exists(uploadFolder))
+{
+Directory.CreateDirectory(uploadFolder);
+}
+
+// Generate unique filename
+string uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(imageFile.FileName);
+string filePath = Path.Combine(uploadFolder, uniqueFileName);
+
+// Save the file
+using (var fileStream = new FileStream(filePath, FileMode.Create))
+{
+imageFile.CopyTo(fileStream);
+}
+
+// Save URL to database
+images.Imageurl = "/uploads/" + uniqueFileName;
+_context.Images.Add(images); // Assuming "Images" is the correct DbSet
+_context.SaveChanges();
+
+TempData["Success"] = "User added successfully!";
+return RedirectToAction("Index");
+}
+
+TempData["Error"] = "Failed to add user. Please check your inputs.";
+return View(images);
+}
+
+
+
+public IActionResult Index()
+{
+List<Image> images = _context.Images.Select(i => new Image
+    {
+    Userid = i.Userid,
+    Imageurl = i.Imageurl
+    }).ToList();
+    return View(images);
+    }
+}
+
+public partial class Image
+{
+    public int Imageid { get; set; }
+
+    public int? Userid { get; set; }
+
+    public string? Imageurl { get; set; }
+}

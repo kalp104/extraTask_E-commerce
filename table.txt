@@ -1,0 +1,218 @@
+@* ---------------------------------------------------js for searching---------------------------------------------------------- *@
+
+<script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Select the search input field
+            const searchInput = document.querySelector(".search_bar");
+
+            // Select all table rows inside the tbody
+            const tableRows = document.querySelectorAll("tbody tr");
+
+            // Add an event listener to detect input changes in the search bar
+            searchInput.addEventListener("input", function () {
+                // Convert the search input value to lowercase for case-insensitive searching
+                const searchTerm = searchInput.value.toLowerCase().trim();
+
+                // Loop through each row in the table body
+                tableRows.forEach(row => {
+                    // Extract text content from each relevant column and convert to lowercase
+                    const name = row.cells[0].textContent.toLowerCase(); // Name column
+                    const email = row.cells[1].textContent.toLowerCase(); // Email column
+                    const phone = row.cells[2].textContent.toLowerCase(); // Phone column
+                    const role = row.cells[3].textContent.toLowerCase(); // Role column
+
+                    // Extract status from the <span> inside the <td>
+                    const statusElement = row.cells[4].querySelector("span");
+                    const status = statusElement ? statusElement.textContent.toLowerCase().trim() : "";
+
+                    // Only allow filtering by exact match of Active, Inactive, or Pending statuses
+                    const validStatuses = ["active", "inactive", "pending"];
+                    const matchesStatus = validStatuses.includes(searchTerm) && status === searchTerm;
+
+                    // Check if any of the columns contain the search term or if the status matches exactly
+                    if (searchTerm === "" || name.includes(searchTerm) || email.includes(searchTerm) || phone.includes(searchTerm) || role.includes(searchTerm) || matchesStatus) {
+                        // If a match is found, keep the row visible
+                        row.style.display = "";
+                    } else {
+                        // Otherwise, hide the row
+                        row.style.display = "none";
+                    }
+                });
+            });
+        });
+
+
+    </script>
+
+
+@* ---------------------------------------------------pagging---------------------------------------------------------- *@
+
+
+// controller
+
+using System;
+using System.Linq;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using pizzaShop.Models;
+using pizzaShop.ModelView;
+using System.Collections.Generic;
+
+namespace pizzaShop.Controllers
+{
+    [Authorize]
+    public class UserTable : Controller
+    {
+        private readonly PizzaShopContext _db;
+
+        public UserTable(PizzaShopContext db)
+        {
+            _db = db;
+        }
+
+        public IActionResult Index()
+        {
+            var email = HttpContext.Items["UserEmail"] as string;
+            if (email == null)
+            {
+                return RedirectToAction("User");
+            }
+
+            return View();
+        }
+
+        // API Endpoint for Fetching Users with Pagination
+        [HttpGet]
+        public IActionResult GetUsers(int page = 1, int pageSize = 5)
+        {
+            var usersQuery = from u in _db.Users
+                             join a in _db.Accounts on u.Accountid equals a.Accountid
+                             select new
+                             {
+                                 Id = u.Userid,
+                                 Name = u.Username,
+                                 Email = u.Email,
+                                 Phone = u.Phone,
+                                 Role = u.Role,
+                                 Status = u.Status
+                             };
+
+            int totalUsers = usersQuery.Count(); // Get total user count
+            var users = usersQuery
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return Json(new { data = users, totalUsers });
+        }
+    }
+}
+
+
+
+
+// .cshtml
+
+<nav aria-label="Page navigation example">
+    <ul class="pagination justify-content-end align-items-center d-lg-flex d-sm-flex d-block gap-2">
+        <div class="d-flex align-items-center mb-2 mt-2">
+            <span>Items per page: &nbsp</span>
+            <div class="dropdown">
+                <button class="btn border dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="itemsPerPageBtn">
+                    5
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item page-size-option" href="#" data-size="5">5</a></li>
+                    <li><a class="dropdown-item page-size-option" href="#" data-size="10">10</a></li>
+                    <li><a class="dropdown-item page-size-option" href="#" data-size="15">15</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="d-flex align-items-center mb-2 mt-2">
+            <span id="pagination-info">Showing 1-5 of 5</span>
+            <li class="page-item">
+                <a class="page-link prev-page mx-2" href="#">&lt;</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link next-page" href="#">></a>
+            </li>
+        </div>
+    </ul>
+</nav>
+
+
+//jquery
+
+$(document).ready(function () {
+    let currentPage = 1;
+    let pageSize = 5;
+
+    function fetchUsers(page, size) {
+        $.ajax({
+            url: `/User/GetUsers`,
+            type: "GET",
+            data: { page: page, pageSize: size },
+            dataType: "json",
+            success: function (data) {
+                updateTable(data.data);
+                updatePagination(page, data.totalUsers, size);
+            },
+            error: function (xhr, status, error) {
+                console.error("Error fetching users:", error);
+            }
+        });
+    }
+
+    function updateTable(users) {
+        const tbody = $("tbody");
+        tbody.empty(); // Clear existing rows
+
+        $.each(users, function (index, user) {
+            const row = `<tr>
+                <td><img class="m-1" src="/images/Default_pfp.svg.png" height="25px" alt="">${user.name}</td>
+                <td>${user.email}</td>
+                <td>${user.phone}</td>
+                <td>${user.role}</td>
+                <td><span class="${user.status}">${user.status}</span></td>
+                <td>
+                    <a href="./editUser.html" class="mx-1"><i class="bi bi-pen"></i></a>
+                    <a href="./editUser.html" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                </td>
+            </tr>`;
+            tbody.append(row);
+        });
+    }
+
+    function updatePagination(currentPage, totalUsers, pageSize) {
+        const totalPages = Math.ceil(totalUsers / pageSize);
+        $("#pagination-info").text(`Showing ${(currentPage - 1) * pageSize + 1}-${Math.min(currentPage * pageSize, totalUsers)} of ${totalUsers}`);
+
+        $(".prev-page").toggleClass("disabled", currentPage === 1);
+        $(".next-page").toggleClass("disabled", currentPage === totalPages);
+    }
+
+    $(".prev-page").click(function (e) {
+        e.preventDefault();
+        if (currentPage > 1) {
+            fetchUsers(--currentPage, pageSize);
+        }
+    });
+
+    $(".next-page").click(function (e) {
+        e.preventDefault();
+        fetchUsers(++currentPage, pageSize);
+    });
+
+    $(".page-size-option").click(function (e) {
+        e.preventDefault();
+        pageSize = $(this).data("size");
+        $("#itemsPerPageBtn").text(pageSize);
+        currentPage = 1; // Reset to first page
+        fetchUsers(currentPage, pageSize);
+    });
+
+    // Load first page initially
+    fetchUsers(currentPage, pageSize);
+});
