@@ -1,0 +1,195 @@
+//------------------------------mail-------------------------------------------------//
+
+[HttpPost]
+public IActionResult AddUser(AddNewUserModel obj, [FromForm] IFormFile imageFile)
+{
+    if (ModelState.IsValid)
+    {
+        // Generate temporary password
+        string tempPassword = obj.Password
+
+        var account = new Account
+        {
+            Username = obj.Username,
+            Email = obj.Email,
+            Password = BCrypt.Net.BCrypt.EnhancedHashPassword(obj.Password),
+            Roleid = obj.roleId
+        };
+        _db.Accounts.Add(account);
+        _db.SaveChanges();
+
+        var user = new User
+        {
+            Firstname = obj.Firstname,
+            Lastname = obj.Lastname,
+            Phone = obj.phone,
+            Address = obj.Address,
+            Zipcode = obj.Zipcode,
+            Countryid = obj.countryId,
+            Stateid = obj.stateId,
+            Cityid = obj.cityId,
+            Accountid = account.Accountid,
+            Roleid = obj.roleId,
+            Status = 3
+        };
+        _db.Users.Add(user);
+        _db.SaveChanges();
+
+        // Handle Image Upload
+        if (imageFile != null)
+        {
+            Image images = new Image();
+            images.Userid = user.Userid;
+            string uploadFolder = Path.Combine(_WebHostEnvironment.WebRootPath, "uploads");
+
+            if (!Directory.Exists(uploadFolder))
+            {
+                Directory.CreateDirectory(uploadFolder);
+            }
+
+            string uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(imageFile.FileName);
+            string filePath = Path.Combine(uploadFolder, uniqueFileName);
+
+            using (var fileStream = new FileStream(filePath, FileMode.Create))
+            {
+                imageFile.CopyTo(fileStream);
+            }
+
+            images.Imageurl = "/uploads/" + uniqueFileName;
+            _db.Images.Add(images);
+            _db.SaveChanges();
+        }
+
+        // Generate password reset link
+        var passwordResetLink = Url.Action("ResetPassword", "Home", new { Email = account.Email }, protocol: HttpContext.Request.Scheme);
+        string resetLink = HtmlEncoder.Default.Encode(passwordResetLink);
+
+        // Email body
+        string emailBody = $@"
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <meta charset='UTF-8'>
+                            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+                            <title>Welcome to PizzaShop</title>
+                        </head>
+                        <body style='font-family: Arial, sans-serif; background-color: #f4f4f9; padding: 20px;'>
+                            <header>
+                                <h1 style='color:#fff;height:5rem;background-color:#0565a1;width:100%;display:flex;align-items:center;justify-content:center;'>PIZZASHOP</h1>
+                            </header>
+                            <p>Hello {obj.Firstname},</p>
+                            <p>Your account has been created successfully.</p>
+                            <p><strong>Email:</strong> {account.Email}</p>
+                            <p><strong>Temporary Password:</strong> {tempPassword}</p>
+                            <p>Please click <a href='{resetLink}'>here</a> to set your new password.</p>
+                            <p>For security purposes, the link will expire in 24 hours.</p>
+                        </body>
+                        </html>";
+
+        // Send email
+        _emailService.SendEmailAsync(account.Email, "Welcome to PizzaShop - Account Created", emailBody);
+
+        TempData["SUCCESS"] = "User Added Successfully and Email Sent";
+        return RedirectToAction("Index", "UserTable");
+    }
+    return View(obj);
+}
+
+
+//--------------------------------------------------------------------------------------------------//
+
+//-------------------------------------update image-----------------------------------------//
+
+<form class="userImageClass position-absolute" method="post" enctype="multipart/form-data" asp-action="UpdateImage" asp-controller="User">
+    <input type="hidden" name="userId" value="@Model.userId">
+    <input type="file" name="file" accept="image/*" style="display: none;" id="fileInput">
+    <img class="bg-white border rounded-circle" id="profileImage" src="@Model.Userimage" height="90px" alt="">
+    <button type="button" class="imgChnagebutton position-absolute bg-white" onclick="document.getElementById('fileInput').click();">
+        <i class="bi bi-camera"></i>
+    </button>
+    <button type="submit" class="d-none" id="uploadBtn"></button>
+</form>
+<script>
+    document.getElementById('fileInput').addEventListener('change', function() {
+        document.getElementById('uploadBtn').click();
+    });
+</script>
+
+
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using pizzaShop.Models;
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace pizzaShop.Controllers
+{
+    public class UserController : Controller
+    {
+        private readonly pizzaShopContext _context;
+        private readonly IWebHostEnvironment _webHostEnvironment;
+
+        public UserController(pizzaShopContext context, IWebHostEnvironment webHostEnvironment)
+        {
+            _context = context;
+            _webHostEnvironment = webHostEnvironment;
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateImage(IFormFile file, int userId)
+        {
+            if (file != null && file.Length > 0)
+            {
+                var user = _context.Users.FirstOrDefault(u => u.Userid == userId);
+                if (user == null)
+                {
+                    TempData["ERROR"] = "User not found.";
+                    return RedirectToAction("Profile");
+                }
+
+                string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images");
+                string uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
+                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(fileStream);
+                }
+
+                var image = new Image
+                {
+                    Userid = userId,
+                    Imageurl = "/images/" + uniqueFileName
+                };
+                _context.Images.Add(image);
+                await _context.SaveChangesAsync();
+
+                user.Userimage = image.Imageurl;
+                _context.Users.Update(user);
+                await _context.SaveChangesAsync();
+
+                TempData["SUCCESS"] = "Profile image updated successfully.";
+            }
+            else
+            {
+                TempData["ERROR"] = "Please select a valid image.";
+            }
+
+            return RedirectToAction("Profile");
+        }
+
+        [HttpGet]
+        public IActionResult GetCurrentImage(int userId)
+        {
+            var image = _context.Images.Where(i => i.Userid == userId).OrderByDescending(i => i.Imageid).FirstOrDefault();
+            if (image == null || string.IsNullOrEmpty(image.Imageurl))
+            {
+                return Json(new { imageUrl = "/images/Default_pfp.svg.png" });
+            }
+            return Json(new { imageUrl = image.Imageurl });
+        }
+    }
+}
